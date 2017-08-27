@@ -50,6 +50,7 @@ def sort_dict(d):
 
 def process(data):
     log_count = len(data)
+    ip_addresses = defaultdict(int)
     countries = defaultdict(int)
     cities = defaultdict(int)
     paths = defaultdict(int)
@@ -63,21 +64,46 @@ def process(data):
         agents[agent] +=1
         paths[path] += 1
 
-        city, country = get_ip_address_city_and_country(geoip_reader, ip_address)
-        cities[city] +=1
-        countries[country] += 1
+        ip_addresses[ip_address] += 1
 
+        city, country = get_ip_address_city_and_country(geoip_reader, ip_address)
+        if city is not None:
+            cities[city] +=1
+        if country is not None:
+            countries[country] += 1
+
+    sorted_ip_addresses = sort_dict(ip_addresses)
     sorted_cities = sort_dict(cities)
     sorted_countries = sort_dict(countries)
     sorted_agents = sort_dict(agents)
     sorted_paths = sort_dict(paths)
 
-    return log_count, sorted_countries, sorted_cities, sorted_agents, sorted_paths
+    return log_count, sorted_ip_addresses, sorted_countries, sorted_cities, sorted_agents, sorted_paths
+
+
+def print_summary(log_count, ip_addresses, countries, cities, agents, paths):
+    print(str(log_count) + ' events logged after filtering.')
+    print('Top countries are:')
+    for country in countries[:5]:
+        print('\t' + country[0] + '\t' + str(country[1]))
+
+    print('Top cities are:')
+    for city in cities[:5]:
+        print('\t' + city[0] + '\t' + str(city[1]))
+
+    print('Top IP addresses are:')
+    for ip_address in ip_addresses[:5]:
+        print('\t' + ip_address[0] + '\t' + str(ip_address[1]))
+
+    print('Top paths are:')
+    for path in paths[:5]:
+        print('\t' + path[0] + '\t' + str(path[1]))
 
 if __name__ == "__main__":
     access_file_path = "/var/log/nginx/imadm.ca.access.log"
     time_period_days = 30
 
     access_log = get_log_lines(access_file_path, time_period_days)
-    log_count, countries, cties, agents, paths = process(access_log)
+    log_count, ip_addresses, countries, cities, agents, paths = process(access_log)
+    print_summary(log_count, ip_addresses, countries, cities, agents, paths)
 
