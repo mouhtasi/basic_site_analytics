@@ -1,10 +1,5 @@
 #!/usr/local/bin/python3.6
 
-# read nginx access log
-# parse and get the ip addresses and times
-# match ip addresses to geoip
-# possibly ignore bots
-
 import re
 from datetime import datetime, timedelta
 from collections import defaultdict
