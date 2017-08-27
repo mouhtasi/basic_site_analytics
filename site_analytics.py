@@ -40,7 +40,11 @@ def get_ip_address_city_and_country(geoip_reader, ip_address):
 
 
 def is_bot(useragent):
-    pass
+    known_bots = ['bingbot', 'Googlebot', 'Baiduspider', 'YandexBot', 'SemrushBot', 'Mail.RU_Bot', 'CSS Certificate Spider', 'Ruby']
+    for bot in known_bots:
+        if bot in useragent:
+            return True
+    return False
 
 
 def sort_dict(d):
@@ -48,29 +52,33 @@ def sort_dict(d):
     return sorted(d.items(), key=lambda t: t[1], reverse=True)
 
 
-def process(data):
-    log_count = len(data)
+def process(data, geoip_file_path):
+    log_count = 0
     ip_addresses = defaultdict(int)
     countries = defaultdict(int)
     cities = defaultdict(int)
     paths = defaultdict(int)
     agents = defaultdict(int)
 
-    geoip_reader = geoip2.database.Reader('/usr/local/share/GeoIP/GeoLite2-City.mmdb')
+    geoip_reader = geoip2.database.Reader(geoip_file_path)
     for line in data:
-        ip_address = line['remote']
         agent = line['agent']
-        path = line['path']
-        agents[agent] +=1
-        paths[path] += 1
+        code = line['code']
+        if not is_bot(agent) and code != '301':  # ignore HTTP->HTTPS redirects
+            log_count += 1
+            ip_address = line['remote']
+            path = line['path']
+            agents[agent] +=1
+            if path is not None:
+                paths[path] += 1
 
-        ip_addresses[ip_address] += 1
+            ip_addresses[ip_address] += 1
 
-        city, country = get_ip_address_city_and_country(geoip_reader, ip_address)
-        if city is not None:
-            cities[city] +=1
-        if country is not None:
-            countries[country] += 1
+            city, country = get_ip_address_city_and_country(geoip_reader, ip_address)
+            if city is not None:
+                cities[city] +=1
+            if country is not None:
+                countries[country] += 1
 
     sorted_ip_addresses = sort_dict(ip_addresses)
     sorted_cities = sort_dict(cities)
@@ -100,10 +108,11 @@ def print_summary(log_count, ip_addresses, countries, cities, agents, paths):
         print('\t' + path[0] + '\t' + str(path[1]))
 
 if __name__ == "__main__":
-    access_file_path = "/var/log/nginx/imadm.ca.access.log"
+    access_file_path = '/var/log/nginx/imadm.ca.access.log'
+    geoip_file_path = '/usr/local/share/GeoIP/GeoLite2-City.mmdb'
     time_period_days = 30
 
     access_log = get_log_lines(access_file_path, time_period_days)
-    log_count, ip_addresses, countries, cities, agents, paths = process(access_log)
+    log_count, ip_addresses, countries, cities, agents, paths = process(access_log, geoip_file_path)
     print_summary(log_count, ip_addresses, countries, cities, agents, paths)
 
